@@ -144,7 +144,7 @@ async function loadDashboardData(isManualRefresh = false) {
 // Load room status
 async function loadRoomStatus() {
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/admin/getRoomStatus`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/adminGetRoomStatus`, {
             headers: {
                 'Authorization': `Bearer ${sessionToken}`,
             },
@@ -293,7 +293,6 @@ async function executeAction() {
 
     const { type, requestId } = pendingAction;
     const endpoint = type === 'approve' ? 'adminApproveBooking' : 'adminRejectBooking';
-
     try {
         const response = await fetch(`${CONFIG.API_BASE_URL}/${endpoint}`, {
             method: 'POST',
