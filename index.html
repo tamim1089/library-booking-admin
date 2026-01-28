@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Admin - Room Booking</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="login-page" class="login-page">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>Library Admin</h1>
+                <p>Room Booking Management</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+                <div id="login-error" class="error-message hidden"></div>
+                <button type="submit" class="login-btn" id="login-btn">
+                    Sign In
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Page -->
+    <div id="dashboard-page" class="dashboard-page hidden">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1>Library Admin Dashboard</h1>
+                <div class="header-actions">
+                    <button id="refresh-dashboard" class="icon-btn" aria-label="Refresh">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
+                    </button>
+                    <button id="logout-btn" class="logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Content -->
+        <main class="dashboard-main">
+            <!-- Current Room Status Section -->
+            <section class="dashboard-section room-status-section">
+                <div class="section-header">
+                    <h2>Current Room Status</h2>
+                    <span id="room-count" class="count-badge">0</span>
+                </div>
+                <div id="rooms-container" class="rooms-container">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+
+            <!-- Pending Requests Section -->
+            <section class="dashboard-section pending-requests-section">
+                <div class="section-header">
+                    <h2>Pending Requests</h2>
+                    <span id="pending-count" class="count-badge warning">0</span>
+                </div>
+                <div id="pending-container" class="pending-container">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Toast Notification -->
+        <div id="admin-toast" class="toast hidden"></div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirm-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 id="modal-title">Confirm Action</h3>
+                <p id="modal-message"></p>
+                <div class="modal-actions">
+                    <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+                    <button id="modal-confirm" class="btn btn-primary">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-app.js"></script>
+</body>
+</html>
