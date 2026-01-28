@@ -201,7 +201,7 @@ function renderRooms(rooms) {
 // Load pending requests
 async function loadPendingRequests() {
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/admin/getPendingRequests`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/adminGetPendingRequests`, {
             headers: {
                 'Authorization': `Bearer ${sessionToken}`,
             },
@@ -292,10 +292,10 @@ async function executeAction() {
     closeModal();
 
     const { type, requestId } = pendingAction;
-    const endpoint = type === 'approve' ? 'approveBooking' : 'rejectBooking';
+    const endpoint = type === 'approve' ? 'adminApproveBooking' : 'adminRejectBooking';
 
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/admin/${endpoint}`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/${endpoint}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${sessionToken}`,
