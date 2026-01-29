@@ -17,6 +17,8 @@ const loginError = document.getElementById('login-error');
 
 // DOM Elements - Dashboard
 const dashboardPage = document.getElementById('dashboard-page');
+const timelineContainer = document.getElementById('timeline-container');
+const timelineDate = document.getElementById('timeline-date');
 const roomsContainer = document.getElementById('rooms-container');
 const pendingContainer = document.getElementById('pending-container');
 const roomCount = document.getElementById('room-count');
@@ -120,6 +122,7 @@ async function loadDashboardData(isManualRefresh = false) {
 
     try {
         await Promise.all([
+            loadTimeline(),
             loadRoomStatus(),
             loadPendingRequests(),
         ]);
@@ -417,6 +420,97 @@ function stopAutoRefresh() {
         clearInterval(refreshInterval);
         refreshInterval = null;
     }
+}
+
+// Load timeline
+async function loadTimeline() {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/getRoomSchedules`, {
+            headers: {
+                'Authorization': `Bearer ${sessionToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Unauthorized');
+            }
+            throw new Error('Failed to load timeline');
+        }
+
+        const data = await response.json();
+        renderTimeline(data);
+    } catch (error) {
+        console.error('Error loading timeline:', error);
+        timelineContainer.innerHTML = '<div class="empty-state">Failed to load schedule</div>';
+        throw error;
+    }
+}
+
+// Render timeline
+function renderTimeline(data) {
+    const today = new Date(data.date);
+    timelineDate.textContent = today.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+
+    if (!data.rooms || data.rooms.length === 0) {
+        timelineContainer.innerHTML = '<div class="empty-state">No rooms found</div>';
+        return;
+    }
+
+    const now = new Date();
+    const startHour = 8; // 8 AM
+    const endHour = 18; // 6 PM
+    const totalHours = endHour - startHour;
+
+    // Calculate current time position (0-100%)
+    const currentHour = now.getHours() + now.getMinutes() / 60;
+    const nowPosition = ((currentHour - startHour) / totalHours) * 100;
+    const showNowMarker = currentHour >= startHour && currentHour <= endHour;
+
+    timelineContainer.innerHTML = data.rooms.map(room => {
+        const bookingsHtml = room.bookings.map(booking => {
+            const start = new Date(booking.start_time);
+            const end = new Date(booking.end_time);
+            
+            const startHour = start.getHours() + start.getMinutes() / 60;
+            const endHour = end.getHours() + end.getMinutes() / 60;
+            
+            const left = ((startHour - 8) / totalHours) * 100;
+            const width = ((endHour - startHour) / totalHours) * 100;
+            
+            return `
+                <div class="timeline-booking" 
+                     style="left: ${left}%; width: ${width}%;"
+                     title="Student: ${escapeHtml(booking.student_id)}
+${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}">
+                    ${escapeHtml(booking.student_id)}
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="timeline-room">
+                <div class="timeline-room-header">${escapeHtml(room.name)}</div>
+                <div class="timeline-bar-wrapper">
+                    ${bookingsHtml}
+                    ${showNowMarker ? `<div class="timeline-now-marker" style="left: ${nowPosition}%"></div>` : ''}
+                </div>
+                <div class="timeline-hours">
+                    <span>8 AM</span>
+                    <span>10 AM</span>
+                    <span>12 PM</span>
+                    <span>2 PM</span>
+                    <span>4 PM</span>
+                    <span>6 PM</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Initialize app

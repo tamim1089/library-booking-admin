@@ -1,29 +1,14 @@
 const { createClient } = require('@supabase/supabase-js');
-const jwt = require('jsonwebtoken');
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Verify JWT token
-function verifyToken(authHeader) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('No token provided');
-    }
-
-    const token = authHeader.substring(7);
-    try {
-        return jwt.verify(token, process.env.JWT_SECRET || 'default-secret-change-in-production');
-    } catch (error) {
-        throw new Error('Invalid token');
-    }
-}
-
 exports.handler = async (event, context) => {
     const headers = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Content-Type': 'application/json',
     };
@@ -41,71 +26,66 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // Verify authentication
-        verifyToken(event.headers.authorization);
-
-        const now = new Date().toISOString();
-        console.log('Checking room status at:', now);
+        // Get today's date range (8 AM to 6 PM)
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0, 0);
 
         // Get all rooms
         const { data: rooms, error: roomsError } = await supabase
             .from('rooms')
-            .select('id, name, access_group, is_active')
+            .select('id, name')
             .eq('is_active', true)
             .order('id');
 
         if (roomsError) throw roomsError;
 
-        // Get upcoming and current bookings (not past ones)
-        const { data: upcomingBookings, error: bookingsError } = await supabase
+        // Get all bookings for today
+        const { data: bookings, error: bookingsError } = await supabase
             .from('bookings')
             .select('room_id, student_id, start_time, end_time')
-            .gte('end_time', now)  // Only bookings that haven't ended yet
-            .order('start_time', { ascending: true });
+            .gte('end_time', todayStart.toISOString())
+            .lte('start_time', todayEnd.toISOString())
+            .order('start_time');
 
         if (bookingsError) throw bookingsError;
 
-        console.log('Upcoming bookings found:', upcomingBookings.length);
-        console.log('Upcoming bookings:', JSON.stringify(upcomingBookings, null, 2));
-
-        // Create a map of room bookings (get the next upcoming booking for each room)
-        const bookingMap = {};
-        upcomingBookings.forEach(booking => {
-            // Only store the first (soonest) booking for each room
-            if (!bookingMap[booking.room_id]) {
-                bookingMap[booking.room_id] = booking;
+        // Group bookings by room
+        const bookingsByRoom = {};
+        bookings.forEach(booking => {
+            if (!bookingsByRoom[booking.room_id]) {
+                bookingsByRoom[booking.room_id] = [];
             }
+            bookingsByRoom[booking.room_id].push({
+                student_id: booking.student_id,
+                start_time: booking.start_time,
+                end_time: booking.end_time,
+            });
         });
 
-        // Combine room data with booking info
-        const roomsWithStatus = rooms.map(room => ({
+        // Combine rooms with their bookings
+        const roomSchedules = rooms.map(room => ({
             id: room.id,
             name: room.name,
-            next_booking: bookingMap[room.id] || null,
+            bookings: bookingsByRoom[room.id] || [],
         }));
 
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify(roomsWithStatus),
+            body: JSON.stringify({
+                date: now.toISOString().split('T')[0],
+                rooms: roomSchedules,
+            }),
         };
 
     } catch (error) {
-        console.error('Error in getRoomStatus:', error);
-
-        if (error.message === 'No token provided' || error.message === 'Invalid token') {
-            return {
-                statusCode: 401,
-                headers,
-                body: JSON.stringify({ message: 'Unauthorized' }),
-            };
-        }
-
+        console.error('Error in getRoomSchedules:', error);
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({
-                message: 'Failed to fetch room status',
+                message: 'Failed to fetch room schedules',
                 error: error.message,
             }),
         };
