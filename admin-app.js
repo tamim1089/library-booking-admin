@@ -260,7 +260,7 @@ function renderPendingRequests(requests) {
 }
 
 // Approve request
-function approveRequest(requestId, roomName, studentId) {
+async function approveRequest(requestId, roomName, studentId) {
     pendingAction = {
         type: 'approve',
         requestId,
@@ -273,7 +273,7 @@ function approveRequest(requestId, roomName, studentId) {
 }
 
 // Reject request
-function rejectRequest(requestId, roomName, studentId) {
+async function rejectRequest(requestId, roomName, studentId) {
     pendingAction = {
         type: 'reject',
         requestId,
@@ -289,11 +289,12 @@ function rejectRequest(requestId, roomName, studentId) {
 async function executeAction() {
     if (!pendingAction) return;
 
+    // Store the action details BEFORE closing modal
+    const { type, requestId } = pendingAction;
+    
     closeModal();
 
-    const { type, requestId } = pendingAction;
     const endpoint = type === 'approve' ? 'adminApproveBooking' : 'adminRejectBooking';
-
     try {
         const response = await fetch(`${CONFIG.API_BASE_URL}/${endpoint}`, {
             method: 'POST',
@@ -316,8 +317,6 @@ async function executeAction() {
         console.error(`Error ${type}ing request:`, error);
         showToast(`Unable to ${type} request`, 'error');
     }
-
-    pendingAction = null;
 }
 
 // Show modal
@@ -389,10 +388,6 @@ function stopAutoRefresh() {
         refreshInterval = null;
     }
 }
-
-// Expose functions to global scope for onclick handlers
-window.approveRequest = approveRequest;
-window.rejectRequest = rejectRequest;
 
 // Initialize app
 if (document.readyState === 'loading') {
