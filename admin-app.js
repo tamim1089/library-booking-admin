@@ -175,23 +175,47 @@ function renderRooms(rooms) {
         return;
     }
 
+    const now = new Date();
+
     roomsContainer.innerHTML = rooms.map(room => {
-        const isOccupied = room.current_booking !== null;
+        const hasBooking = room.next_booking !== null;
+        
+        if (!hasBooking) {
+            return `
+                <div class="room-card">
+                    <div class="room-info">
+                        <h3>${escapeHtml(room.name)}</h3>
+                        <div class="room-details">
+                            No upcoming bookings
+                        </div>
+                    </div>
+                    <div class="room-status">
+                        <span class="status-dot available"></span>
+                        Available
+                    </div>
+                </div>
+            `;
+        }
+
+        const booking = room.next_booking;
+        const startTime = new Date(booking.start_time);
+        const endTime = new Date(booking.end_time);
+        const isCurrentlyOccupied = now >= startTime && now <= endTime;
+        const isFuture = now < startTime;
         
         return `
-            <div class="room-card ${isOccupied ? 'occupied' : ''}">
+            <div class="room-card ${isCurrentlyOccupied ? 'occupied' : ''}">
                 <div class="room-info">
                     <h3>${escapeHtml(room.name)}</h3>
                     <div class="room-details">
-                        ${isOccupied ? `
-                            Student: ${escapeHtml(room.current_booking.student_id)}<br>
-                            Until: ${formatTime(room.current_booking.end_time)}
-                        ` : 'Available'}
+                        Student: ${escapeHtml(booking.student_id)}<br>
+                        ${isFuture ? 'Scheduled: ' : 'Until: '}${formatTime(isFuture ? booking.start_time : booking.end_time)}<br>
+                        ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}
                     </div>
                 </div>
                 <div class="room-status">
-                    <span class="status-dot ${isOccupied ? 'occupied' : 'available'}"></span>
-                    ${isOccupied ? 'Occupied' : 'Available'}
+                    <span class="status-dot ${isCurrentlyOccupied ? 'occupied' : 'available'}"></span>
+                    ${isCurrentlyOccupied ? 'Occupied' : 'Scheduled'}
                 </div>
             </div>
         `;

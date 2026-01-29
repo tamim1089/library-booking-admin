@@ -45,6 +45,7 @@ exports.handler = async (event, context) => {
         verifyToken(event.headers.authorization);
 
         const now = new Date().toISOString();
+        console.log('Checking room status at:', now);
 
         // Get all rooms
         const { data: rooms, error: roomsError } = await supabase
@@ -55,26 +56,32 @@ exports.handler = async (event, context) => {
 
         if (roomsError) throw roomsError;
 
-        // Get current active bookings
-        const { data: activeBookings, error: bookingsError } = await supabase
+        // Get upcoming and current bookings (not past ones)
+        const { data: upcomingBookings, error: bookingsError } = await supabase
             .from('bookings')
             .select('room_id, student_id, start_time, end_time')
-            .gte('end_time', now)
-            .lte('start_time', now);
+            .gte('end_time', now)  // Only bookings that haven't ended yet
+            .order('start_time', { ascending: true });
 
         if (bookingsError) throw bookingsError;
 
-        // Create a map of room bookings
+        console.log('Upcoming bookings found:', upcomingBookings.length);
+        console.log('Upcoming bookings:', JSON.stringify(upcomingBookings, null, 2));
+
+        // Create a map of room bookings (get the next upcoming booking for each room)
         const bookingMap = {};
-        activeBookings.forEach(booking => {
-            bookingMap[booking.room_id] = booking;
+        upcomingBookings.forEach(booking => {
+            // Only store the first (soonest) booking for each room
+            if (!bookingMap[booking.room_id]) {
+                bookingMap[booking.room_id] = booking;
+            }
         });
 
         // Combine room data with booking info
         const roomsWithStatus = rooms.map(room => ({
             id: room.id,
             name: room.name,
-            current_booking: bookingMap[room.id] || null,
+            next_booking: bookingMap[room.id] || null,
         }));
 
         return {
