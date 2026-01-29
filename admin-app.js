@@ -309,13 +309,19 @@ async function executeAction() {
 
         if (response.ok) {
             showToast(`Request ${type}d successfully`, 'success');
-            loadDashboardData();
         } else {
             showToast(data.message || `Failed to ${type} request`, 'error');
         }
+        
+        // Always refresh dashboard to sync with actual database state
+        // (backend may have updated status even on some error responses)
+        loadDashboardData();
+        
     } catch (error) {
         console.error(`Error ${type}ing request:`, error);
         showToast(`Unable to ${type} request`, 'error');
+        // Refresh on network errors too
+        loadDashboardData();
     }
 }
 
