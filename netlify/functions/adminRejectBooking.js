@@ -74,15 +74,18 @@ exports.handler = async (event, context) => {
 
         if (updateError) throw updateError;
 
-        // Log admin action
-        await supabase
-            .from('audit_logs')
-            .insert({
-                admin_username: adminUser.username,
-                action: 'reject_booking',
-                related_request_id: request_id,
-            })
-            .catch(err => console.error('Audit log error:', err));
+        // Log admin action (non-blocking - don't fail if audit log fails)
+        try {
+            await supabase
+                .from('audit_logs')
+                .insert({
+                    admin_username: adminUser.username,
+                    action: 'reject_booking',
+                    related_request_id: request_id,
+                });
+        } catch (auditError) {
+            console.error('Audit log error (non-critical):', auditError);
+        }
 
         return {
             statusCode: 200,
