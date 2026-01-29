@@ -178,47 +178,23 @@ function renderRooms(rooms) {
         return;
     }
 
-    const now = new Date();
-
     roomsContainer.innerHTML = rooms.map(room => {
-        const hasBooking = room.next_booking !== null;
-        
-        if (!hasBooking) {
-            return `
-                <div class="room-card">
-                    <div class="room-info">
-                        <h3>${escapeHtml(room.name)}</h3>
-                        <div class="room-details">
-                            No upcoming bookings
-                        </div>
-                    </div>
-                    <div class="room-status">
-                        <span class="status-dot available"></span>
-                        Available
-                    </div>
-                </div>
-            `;
-        }
-
-        const booking = room.next_booking;
-        const startTime = new Date(booking.start_time);
-        const endTime = new Date(booking.end_time);
-        const isCurrentlyOccupied = now >= startTime && now <= endTime;
-        const isFuture = now < startTime;
+        const isOccupied = room.current_booking !== null;
         
         return `
-            <div class="room-card ${isCurrentlyOccupied ? 'occupied' : ''}">
+            <div class="room-card ${isOccupied ? 'occupied' : ''}">
                 <div class="room-info">
                     <h3>${escapeHtml(room.name)}</h3>
                     <div class="room-details">
-                        Student: ${escapeHtml(booking.student_id)}<br>
-                        ${isFuture ? 'Scheduled: ' : 'Until: '}${formatTime(isFuture ? booking.start_time : booking.end_time)}<br>
-                        ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}
+                        ${isOccupied ? `
+                            Student: ${escapeHtml(room.current_booking.student_id)}<br>
+                            Until: ${formatTime(room.current_booking.end_time)}
+                        ` : 'Available'}
                     </div>
                 </div>
                 <div class="room-status">
-                    <span class="status-dot ${isCurrentlyOccupied ? 'occupied' : 'available'}"></span>
-                    ${isCurrentlyOccupied ? 'Occupied' : 'Scheduled'}
+                    <span class="status-dot ${isOccupied ? 'occupied' : 'available'}"></span>
+                    ${isOccupied ? 'Occupied' : 'Available'}
                 </div>
             </div>
         `;
@@ -316,11 +292,9 @@ async function rejectRequest(requestId, roomName, studentId) {
 async function executeAction() {
     if (!pendingAction) return;
 
-    // Store the action details BEFORE closing modal
-    const { type, requestId } = pendingAction;
-    
     closeModal();
 
+    const { type, requestId } = pendingAction;
     const endpoint = type === 'approve' ? 'adminApproveBooking' : 'adminRejectBooking';
     try {
         const response = await fetch(`${CONFIG.API_BASE_URL}/${endpoint}`, {
@@ -336,20 +310,16 @@ async function executeAction() {
 
         if (response.ok) {
             showToast(`Request ${type}d successfully`, 'success');
+            loadDashboardData();
         } else {
             showToast(data.message || `Failed to ${type} request`, 'error');
         }
-        
-        // Always refresh dashboard to sync with actual database state
-        // (backend may have updated status even on some error responses)
-        loadDashboardData();
-        
     } catch (error) {
         console.error(`Error ${type}ing request:`, error);
         showToast(`Unable to ${type} request`, 'error');
-        // Refresh on network errors too
-        loadDashboardData();
     }
+
+    pendingAction = null;
 }
 
 // Show modal
@@ -425,16 +395,9 @@ function stopAutoRefresh() {
 // Load timeline
 async function loadTimeline() {
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/getRoomSchedules`, {
-            headers: {
-                'Authorization': `Bearer ${sessionToken}`,
-            },
-        });
+        const response = await fetch(`${CONFIG.API_BASE_URL}/getRoomSchedules`);
 
         if (!response.ok) {
-            if (response.status === 401) {
-                throw new Error('Unauthorized');
-            }
             throw new Error('Failed to load timeline');
         }
 
@@ -443,7 +406,6 @@ async function loadTimeline() {
     } catch (error) {
         console.error('Error loading timeline:', error);
         timelineContainer.innerHTML = '<div class="empty-state">Failed to load schedule</div>';
-        throw error;
     }
 }
 
@@ -463,11 +425,10 @@ function renderTimeline(data) {
     }
 
     const now = new Date();
-    const startHour = 8; // 8 AM
-    const endHour = 18; // 6 PM
+    const startHour = 8;
+    const endHour = 18;
     const totalHours = endHour - startHour;
 
-    // Calculate current time position (0-100%)
     const currentHour = now.getHours() + now.getMinutes() / 60;
     const nowPosition = ((currentHour - startHour) / totalHours) * 100;
     const showNowMarker = currentHour >= startHour && currentHour <= endHour;
