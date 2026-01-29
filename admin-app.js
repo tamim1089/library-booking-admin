@@ -260,7 +260,7 @@ function renderPendingRequests(requests) {
 }
 
 // Approve request
-async function approveRequest(requestId, roomName, studentId) {
+function approveRequest(requestId, roomName, studentId) {
     pendingAction = {
         type: 'approve',
         requestId,
@@ -273,7 +273,7 @@ async function approveRequest(requestId, roomName, studentId) {
 }
 
 // Reject request
-async function rejectRequest(requestId, roomName, studentId) {
+function rejectRequest(requestId, roomName, studentId) {
     pendingAction = {
         type: 'reject',
         requestId,
@@ -293,6 +293,7 @@ async function executeAction() {
 
     const { type, requestId } = pendingAction;
     const endpoint = type === 'approve' ? 'adminApproveBooking' : 'adminRejectBooking';
+
     try {
         const response = await fetch(`${CONFIG.API_BASE_URL}/${endpoint}`, {
             method: 'POST',
@@ -388,6 +389,10 @@ function stopAutoRefresh() {
         refreshInterval = null;
     }
 }
+
+// Expose functions to global scope for onclick handlers
+window.approveRequest = approveRequest;
+window.rejectRequest = rejectRequest;
 
 // Initialize app
 if (document.readyState === 'loading') {
